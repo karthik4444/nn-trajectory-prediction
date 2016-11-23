@@ -19,10 +19,10 @@ X_train = np.asarray([i[:-1] for i in data_seq_eth.values()])
 y_train = np.asarray([i[1:] for i in data_seq_eth.values()])
 
 
-with open('processed_data/ETH/seq_eth/X_train.pickle', 'wb') as f:
+with open('processed_data/X_train.pickle', 'wb') as f:
 	pickle.dump(X_train, f)
 
-with open('processed_data/ETH/seq_eth/y_train.pickle', 'wb') as f:
+with open('processed_data/y_train.pickle', 'wb') as f:
 	pickle.dump(y_train, f)
 
 '''
