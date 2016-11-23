@@ -2,9 +2,11 @@
 import numpy as np
 from simple_gru import SimpleGRU
 import time
+import pickle
 
 #loading data
-X_train = 
+X_train = pickle.load(open('processed_data/X_train'))
+y_train = pickle.load(open('processed_data/y_train'))
 
 #hyperparameters
 __INPUT_DIM = 2

@@ -30,5 +30,4 @@ Access the pickled variable with
 
 with open('file_path', 'rb') as f:
     X_train = pickle.load(f)
-
 '''
