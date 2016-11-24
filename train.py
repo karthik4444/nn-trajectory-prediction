@@ -16,10 +16,27 @@ __NUM_EPOCHS = 100
 __LEARNING_RATE = 0.003
 
 #defining training iterations
-#NOT YET IMPLEMENTED
+def train(model, x_train, y_train, learning_rate, num_epochs, step_duration,  evaluate_loss_after=5):
+	num_training_examples = len(y_train)
+	for epoch in range(num_epochs):
+		time_remaining = (step_duration * num_training_examples) * (num_epochs - epoch)
+		hours = time_remaining / 3600
+		minutes = (time_remaining % 3600) / 60
+		print("EPOCH: %d /100", epoch+1)
+		print("TIME REMAINING: %d h %d min", hours, minutes)
+		#console updates on training progress
+		if (epoch % evaluate_loss_after == 0):
+			print("CURRENT LOSS IS %f", model.loss())
+		#training
+		for examples in range(num_training_examples):
+			model.sgd_step(X_train[i], y_train[i], learning_rate)
 
-#training script
+#test performance with one gradient descent step
 model = SimpleGRU(__INPUT_DIM, __OUTPUT_DIM, __HIDDEN_DIM)
 t1 = time.time()
 model.sgd_step(X_train[10], y_train[10], __LEARNING_RATE)
 t2 = time.time()
+step_duration = t2 - t1
+
+#train model
+train(model, X_train, y_train, __LEARNING_RATE, __NUM_EPOCHS, step_duration)
