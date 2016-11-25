@@ -32,11 +32,12 @@ def train(model, x_train, y_train, learning_rate, num_epochs, step_duration,  ev
 			model.sgd_step(X_train[i], y_train[i], learning_rate)
 
 #test performance with one gradient descent step
-model = SimpleGRU(__INPUT_DIM, __OUTPUT_DIM, __HIDDEN_DIM)
+testModel = SimpleGRU(__INPUT_DIM, __OUTPUT_DIM, __HIDDEN_DIM)
 t1 = time.time()
 model.sgd_step(X_train[10], y_train[10], __LEARNING_RATE)
 t2 = time.time()
 step_duration = t2 - t1
 
 #train model
+model = SimpleGRU(__INPUT_DIM, __OUTPUT_DIM, __HIDDEN_DIM)
 train(model, X_train, y_train, __LEARNING_RATE, __NUM_EPOCHS, step_duration)
