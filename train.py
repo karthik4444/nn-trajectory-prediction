@@ -2,11 +2,10 @@
 import numpy as np
 from simple_gru import SimpleGRU
 import time
-import pickle
+from utils import *
 
 #loading data
-X_train = pickle.load(open('processed_data/X_train'))
-y_train = pickle.load(open('processed_data/y_train'))
+X_train, y_train = load_processed_data()  
 
 #hyperparameters
 __INPUT_DIM = 2
@@ -28,8 +27,8 @@ def train(model, x_train, y_train, learning_rate, num_epochs, step_duration,  ev
 		if (epoch % evaluate_loss_after == 0):
 			print("CURRENT LOSS IS %f", model.loss())
 		#training
-		for examples in range(num_training_examples):
-			model.sgd_step(X_train[i], y_train[i], learning_rate)
+		for example in range(num_training_examples):
+			model.sgd_step(X_train[example], y_train[example], learning_rate)
 
 #test performance with one gradient descent step
 testModel = SimpleGRU(__INPUT_DIM, __OUTPUT_DIM, __HIDDEN_DIM)
