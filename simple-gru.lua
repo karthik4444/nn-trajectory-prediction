@@ -1,16 +1,14 @@
 local GRU = {}
 
-function GRU.gru(input_size, rnn_size, n, dropout)
-  dropout = dropout or 0 
+function GRU.init(input_size, gru_size, num_layers)
   local inputs = {}
-  table.insert(inputs, nn.Identity()()) -- x
-  for L = 1,n do
-    table.insert(inputs, nn.Identity()()) -- prev_h[L]
+  for L = 1,(n+1) do
+    table.insert(inputs, nn.Identity()())
   end
 
   function new_input_sum(insize, xv, hv)
-    local i2h = nn.Linear(insize, rnn_size)(xv)
-    local h2h = nn.Linear(rnn_size, rnn_size)(hv)
+    local i2h = nn.Linear(insize, gru_size)(xv)
+    local h2h = nn.Linear(gru_size, gru_size)(hv)
     return nn.CAddTable()({i2h, h2h})
   end
 
@@ -46,10 +44,9 @@ function GRU.gru(input_size, rnn_size, n, dropout)
   end
 -- set up the decoder
   local top_h = outputs[#outputs]
-  if dropout > 0 then top_h = nn.Dropout(dropout)(top_h) end
-  local proj = nn.Linear(rnn_size, input_size)(top_h)
-  local logsoft = nn.LogSoftMax()(proj)
-  table.insert(outputs, logsoft)
+  top_h = nn.Dropout(true)(top_h)
+  local pred = nn.Linear(rnn_size, input_size)(top_h)
+  table.insert(outputs, pred)
 
   return nn.gModule(inputs, outputs)
 end
