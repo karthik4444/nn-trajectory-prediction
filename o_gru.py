@@ -1,2 +1,0 @@
-class SocialGRU:
-	#YET TO BE IMPLEMENTED
