@@ -14,9 +14,7 @@ while True:
 	if line == '':
 		break
 	val = [float(i) for i in line.split("  ") if i != '']
-	loc = np.zeros(shape=(2,1))
-	loc[0], loc[1] = val[2], val[4]
-	data_seq_eth[val[1]].append(theano.shared(loc))
+	data_seq_eth[val[1]].append((val[2], val[4]))
 
 #eliminating short trajectories (threshold = minimum trajectory length of 9)
 keys = dict(data_seq_eth).keys()
