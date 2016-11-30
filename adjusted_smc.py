@@ -27,6 +27,7 @@ maxX = 13.9
 maxY = 13.9
 x_dim = 5
 y_dim = 4
+n_bi_samples = 5
 total_classes = x_dim * y_dim
 transition = np.zeros((total_classes + 1, total_classes + 1))
 
@@ -70,13 +71,13 @@ for i in xrange(num_test):
         x1Class = getClass(x1, y1)
         currHigh = (-1, -1)
         highVal = -1
-        for _ in range(1):
+        for _ in range(n_bi_samples):
             sample = np.random.multivariate_normal(mean, cov)
             x2, y2 = max(min(x1 + sample[0], maxX), 0), max(min(y1 + sample[1], maxY), 0)
             classVal = getClass(x2, y2)
             try:
                 if (transition[x1Class, classVal] > highVal):
-                    highVal = classVal
+                    highVal = transition[x1Class, classVal]
                     currHigh = (x2, y2)
 	    except IndexError:
 		print("x1Class ", x1Class)
@@ -106,12 +107,12 @@ for i in xrange(num_train):
         x1Class = getClass(x1, y1)
         currHigh = (-1, -1)
         highVal = -1
-	for _ in range(1):
+	for _ in range(n_bi_samples):
             sample = np.random.multivariate_normal(mean, cov)
             x2, y2 = max(min(x1 + sample[0], maxX), 0), max(min(y1 + sample[1], maxY), 0)
             classVal = getClass(x2, y2)
             if (transition[x1Class, classVal] > highVal):
-                highVal = classVal
+                highVal = transition[x1Class, classVal]
                 currHigh = (x2, y2)
         pred[i].append(currHigh)
 
