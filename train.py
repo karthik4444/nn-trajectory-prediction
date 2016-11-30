@@ -20,6 +20,7 @@ def train(model, x_train, y_train, learning_rate, num_epochs, step_duration,  ev
 		log_time_remaining(step_duration, len(y_train), num_epochs, epoch)
 		if (epoch % evaluate_loss_after == 0):
 			print("CURRENT COST IS {}".format(model.cost(x_train, y_train)))
+			save_model(model)
 		#training
 		for example in range(len(y_train)):
 			model.sgd_step(X_train[example], y_train[example], len(y_train[example]), learning_rate)

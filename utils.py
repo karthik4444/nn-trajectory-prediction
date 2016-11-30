@@ -13,3 +13,11 @@ def log_time_remaining(step_duration, num_examples, num_epochs, epoch):
 	minutes = (time_remaining % 3600) / 60
 	print("EPOCH: {} /{}}".format(epoch+1, num_epochs))
 	print("TIME REMAINING: {} h {} min".format(hours, minutes))
+def save_model(model):
+	f = open('model/baseline_gru.pickle', 'wb')
+	pickle.dump(model, f)
+
+def load_model():
+	f = open('model/baseline_gru.pickle', 'rb')
+	model = pickle.load
+	return model
