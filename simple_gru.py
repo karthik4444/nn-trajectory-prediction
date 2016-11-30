@@ -85,6 +85,8 @@ class SimpleGRU:
             )
         loss = T.mean((preds - y) ** 2)
 
+
+
         #back-propogation through time. Truncation is handled upon calculating o.
         dU = T.grad(loss, U)
         dW = T.grad(loss, W)
@@ -112,6 +114,7 @@ class SimpleGRU:
         self.sgd_step = theano.function(
             [x, y, k, learning_rate, theano.In(decay, value=0.9)],
             [],
+            allow_input_downcast=True,
             updates=[(U, U - learning_rate * dU / T.sqrt(mU + 1e-6)),
                      (W, W - learning_rate * dW / T.sqrt(mW + 1e-6)),
                      (V, V - learning_rate * dV / T.sqrt(mV + 1e-6)),
@@ -124,12 +127,10 @@ class SimpleGRU:
                      (self.mc, mc)
                     ])
 
-        self.predict = theano.function([x], next_step)
-        self.loss = theano.function([x, y, k], loss)
+        self.predict = theano.function([x, k], preds, allow_input_downcast=True)
+        self.loss = theano.function([x, y, k], loss, allow_input_downcast=True)
 
-        def cost(self, X, Y, num_training_examples):
+        def cost(X, Y):
             #average loss = cost
-            return (np.sum([self.loss(x,y) for x,y in zip(X,Y)])) / num_training_examples
-
-
-model = SimpleGRU(2, 2, 128)
+            return (np.sum([self.loss(x,y,len(y)) for x,y in zip(X,Y)])) / len(X)
+        self.cost = cost

@@ -14,29 +14,23 @@ __HIDDEN_DIM = 128
 __NUM_EPOCHS = 100
 __LEARNING_RATE = 0.003
 
-#defining training iterations
-def train(model, x_train, y_train, learning_rate, num_epochs, step_duration,  evaluate_loss_after=5):
-	num_training_examples = len(y_train)
+#training iterations
+def train(model, x_train, y_train, learning_rate, num_epochs, step_duration,  evaluate_loss_after=1):
 	for epoch in range(num_epochs):
-		time_remaining = (step_duration * num_training_examples) * (num_epochs - epoch)
-		hours = time_remaining / 3600
-		minutes = (time_remaining % 3600) / 60
-		print("EPOCH: %d /100", epoch+1)
-		print("TIME REMAINING: %d h %d min", hours, minutes)
-		#console updates on training progress
+		log_time_remaining(step_duration, len(y_train), num_epochs, epoch)
 		if (epoch % evaluate_loss_after == 0):
-			print("CURRENT LOSS IS %f", model.loss())
+			print("CURRENT COST IS {}".format(model.cost(x_train, y_train)))
 		#training
-		for example in range(num_training_examples):
-			model.sgd_step(X_train[example], y_train[example], learning_rate)
+		for example in range(len(y_train)):
+			model.sgd_step(X_train[example], y_train[example], len(y_train[example]), learning_rate)
 
 #test performance with one gradient descent step
 testModel = SimpleGRU(__INPUT_DIM, __OUTPUT_DIM, __HIDDEN_DIM)
 t1 = time.time()
-model.sgd_step(X_train[10], y_train[10], __LEARNING_RATE)
+testModel.sgd_step(X_train[10], y_train[10], len(y_train[10]), __LEARNING_RATE)
 t2 = time.time()
 step_duration = t2 - t1
+print("one sgd step takes {} microseconds".format(step_duration * 1000))
 
-#train model
 model = SimpleGRU(__INPUT_DIM, __OUTPUT_DIM, __HIDDEN_DIM)
 train(model, X_train, y_train, __LEARNING_RATE, __NUM_EPOCHS, step_duration)
