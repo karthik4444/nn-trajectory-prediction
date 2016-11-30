@@ -1,6 +1,6 @@
 #training script for neural nets
 import numpy as np
-from simple_gru import SimpleGRU
+from baseline_gru import SimpleGRU
 import time
 from utils import *
 
