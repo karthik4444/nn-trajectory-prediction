@@ -2,8 +2,6 @@ import pickle
 import sys
 import numpy as np
 
-sys.setrecursionlimit(10000)
-
 def save_processed_data(x, y):
 	pickle.dump(x, open('train_data/X_train.pickle', 'wb'))
 	pickle.dump(y, open('train_data/y_train.pickle', 'wb'))
