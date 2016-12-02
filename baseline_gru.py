@@ -27,6 +27,7 @@ class SimpleGRU:
         self.output_dim = output_dim
         #network parameters
         optim_range = np.sqrt(1./hidden_dim)
+        E = np.random.uniform(-1 * optim_range, optim_range, (3, hidden_dim, input_dim))
         U = np.random.uniform(-1 * optim_range, optim_range, (3, hidden_dim, input_dim))
         W = np.random.uniform(-1 * optim_range, optim_range, (3, hidden_dim, hidden_dim))
         V = np.random.uniform(-1 * optim_range, optim_range, (output_dim, hidden_dim))
@@ -55,7 +56,7 @@ class SimpleGRU:
         k = T.iscalar('k')
 
         def forward_prop_step(x_t, s_prev):
-            #Embedding Layer
+            #Embedding Layer with ReLU non-linearity
             x_e = x_t
             # GRU Layer 1
             z_t = T.nnet.hard_sigmoid(U[0].dot(x_e) + W[0].dot(s_prev) + b[0])
