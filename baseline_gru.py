@@ -27,19 +27,21 @@ class SimpleGRU:
         self.output_dim = output_dim
         #network parameters
         optim_range = np.sqrt(1./hidden_dim)
-        E = np.random.uniform(-1 * optim_range, optim_range, (3, hidden_dim, input_dim))
-        U = np.random.uniform(-1 * optim_range, optim_range, (3, hidden_dim, input_dim))
+        E = np.random.uniform(-1 * optim_range, optim_range, (hidden_dim, input_dim))
+        U = np.random.uniform(-1 * optim_range, optim_range, (3, hidden_dim, hidden_dim))
         W = np.random.uniform(-1 * optim_range, optim_range, (3, hidden_dim, hidden_dim))
         V = np.random.uniform(-1 * optim_range, optim_range, (output_dim, hidden_dim))
         b = np.zeros((3, hidden_dim))
         c = np.zeros(output_dim)
         #shared variables
+        self.E = theano.shared(name='E', value=E.astype(theano.config.floatX))
         self.U = theano.shared(name='U', value=U.astype(theano.config.floatX))
         self.W = theano.shared(name='W', value=W.astype(theano.config.floatX))
         self.V = theano.shared(name='V', value=V.astype(theano.config.floatX))
         self.b = theano.shared(name='b', value=b.astype(theano.config.floatX))
         self.c = theano.shared(name='c', value=c.astype(theano.config.floatX))
         #RMSProp parameters
+        self.mE = theano.shared(name='mE', value=np.zeros(E.shape).astype(theano.config.floatX))
         self.mU = theano.shared(name='mU', value=np.zeros(U.shape).astype(theano.config.floatX))
         self.mV = theano.shared(name='mV', value=np.zeros(V.shape).astype(theano.config.floatX))
         self.mW = theano.shared(name='mW', value=np.zeros(W.shape).astype(theano.config.floatX))
@@ -50,18 +52,21 @@ class SimpleGRU:
         self.__theano_build()
 
     def __theano_build(self):
-        U, W, V, b, c = self.U, self.W, self.V, self.b, self.c
+        E, U, W, V, b, c = self.E, self.U, self.W, self.V, self.b, self.c
         x = T.fmatrix('x')
         y = T.fmatrix('y')
         k = T.iscalar('k')
 
+        def ReLU(x):
+            return T.switch(x<0, 0, x)
+
         def forward_prop_step(x_t, s_prev):
             #Embedding Layer with ReLU non-linearity
-            x_e = x_t
+            x_e = ReLU(E.dot(x_t))
             # GRU Layer 1
             z_t = T.nnet.hard_sigmoid(U[0].dot(x_e) + W[0].dot(s_prev) + b[0])
             r_t = T.nnet.hard_sigmoid(U[1].dot(x_e) + W[1].dot(s_prev) + b[1])
-            c_t = T.tanh(U[2].dot(x_e) + W[2].dot(s_prev * r_t) + b[2])
+            c_t = ReLU(U[2].dot(x_e) + W[2].dot(s_prev * r_t) + b[2])
             s_t = (T.ones_like(z_t) - z_t) * c_t + z_t * s_prev
             #prediction at time t+1
             o_t = V.dot(s_t) + c
@@ -89,6 +94,7 @@ class SimpleGRU:
 
 
         #back-propogation through time. Truncation is handled upon calculating o.
+        dE = T.grad(loss, E)
         dU = T.grad(loss, U)
         dW = T.grad(loss, W)
         db = T.grad(loss, b)
@@ -104,6 +110,7 @@ class SimpleGRU:
 
 
         #RMSProp updates
+        mE = decay * self.mE + (1 - decay) * dE ** 2
         mU = decay * self.mU + (1 - decay) * dU ** 2
         mW = decay * self.mW + (1 - decay) * dW ** 2
         mV = decay * self.mV + (1 - decay) * dV ** 2
@@ -116,16 +123,18 @@ class SimpleGRU:
             [x, y, k, learning_rate, theano.In(decay, value=0.9)],
             [],
             allow_input_downcast=True,
-            updates=[(U, U - learning_rate * dU / T.sqrt(mU + 1e-6)),
-                     (W, W - learning_rate * dW / T.sqrt(mW + 1e-6)),
-                     (V, V - learning_rate * dV / T.sqrt(mV + 1e-6)),
-                     (b, b - learning_rate * db / T.sqrt(mb + 1e-6)),
-                     (c, c - learning_rate * dc / T.sqrt(mc + 1e-6)),
-                     (self.mU, mU),
-                     (self.mW, mW),
-                     (self.mV, mV),
-                     (self.mb, mb),
-                     (self.mc, mc)
+            updates=[
+                    (E, E - learning_rate * dE / T.sqrt(mE + 1e-6)),
+                    (U, U - learning_rate * dU / T.sqrt(mU + 1e-6)),
+                    (W, W - learning_rate * dW / T.sqrt(mW + 1e-6)),
+                    (V, V - learning_rate * dV / T.sqrt(mV + 1e-6)),
+                    (b, b - learning_rate * db / T.sqrt(mb + 1e-6)),
+                    (c, c - learning_rate * dc / T.sqrt(mc + 1e-6)),
+                    (self.mU, mU),
+                    (self.mW, mW),
+                    (self.mV, mV),
+                    (self.mb, mb),
+                    (self.mc, mc)
                     ])
 
         self.predict = theano.function([x, k], preds, allow_input_downcast=True)
