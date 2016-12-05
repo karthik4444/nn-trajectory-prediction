@@ -3,8 +3,8 @@ import numpy as np
 import pdb
 from sklearn.metrics import mean_squared_error
 
-X_full = pickle.load(open('processed_data/X_train.pickle'))
-y_full = pickle.load(open('processed_data/y_train.pickle'))
+X_full = pickle.load(open('train_data/X_train.pickle'))
+y_full = pickle.load(open('train_data/y_train.pickle'))
 
 #calculate mean and variance over samples
 
