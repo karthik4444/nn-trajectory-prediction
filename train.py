@@ -1,44 +1,62 @@
 #training script for neural nets
 import numpy as np
-from baseline_gru import SimpleGRU
+from pooling_gru import PoolingGRU
 import time
 from utils import *
 
 #loading data
-X_train, y_train = load_processed_data()  
+scene = load_processed_scene() 
 
 #hyperparameters
 __INPUT_DIM = 2
 __OUTPUT_DIM = 2
 __HIDDEN_DIM = 128
-__NUM_EPOCHS = 100
+__NUM_EPOCHS = 200
 __LEARNING_RATE = 0.003
 
+models = {
+	"Pedestrian": PoolingGRU(__INPUT_DIM, __OUTPUT_DIM, __HIDDEN_DIM),
+	"Biker": PoolingGRU(__INPUT_DIM, __OUTPUT_DIM, __HIDDEN_DIM),
+	"Skater": PoolingGRU(__INPUT_DIM, __OUTPUT_DIM, __HIDDEN_DIM),
+	"Cart": PoolingGRU(__INPUT_DIM, __OUTPUT_DIM, __HIDDEN_DIM),
+	"Bus": PoolingGRU(__INPUT_DIM, __OUTPUT_DIM, __HIDDEN_DIM),
+	"Car": PoolingGRU(__INPUT_DIM, __OUTPUT_DIM, __HIDDEN_DIM)
+}
+
+def pool_hidden_states(hidden_states, other_positions, position, id):
+	pooling_bounds = []
+	for i in range(32):
+		for j in range(32):
+			top_right_bound = () if () else ()
+			bottom_left_bound = () if () else ()
+
 #training iterations
-def train(model, x_train, y_train, learning_rate, num_epochs, step_duration,  evaluate_loss_after=4):
+def train():
 	losses = []
 	for epoch in range(num_epochs):
-		print("EPOCH: {} /{}".format(epoch+1, num_epochs))
-		if ((epoch+1) % evaluate_loss_after == 0):
-			save_model(model)
-			losses.append(model.cost(x_train, y_train))
-			log_time_remaining(step_duration, len(y_train), num_epochs, epoch)
-			print("CURRENT COST IS {}".format(losses[-1]))
-			if (len(losses) > 1 and losses[-1] > losses[-2]):
-				learning_rate = learning_rate * 0.5
-				print("Learning rate was halved to".format(learning_rate))
-		#training
-		for example in range(len(y_train)):
-			model.sgd_step(X_train[example], y_train[example], len(y_train[example]), learning_rate)
+		scene_hidden_states = {}
+		obj_history = {}
+		for frame in scene.keys():
+			layout = scene[frame]
 
-#test performance with one gradient descent step
-testModel = SimpleGRU(__INPUT_DIM, __OUTPUT_DIM, __HIDDEN_DIM)
-t1 = time.time()
-testModel.sgd_step(X_train[10], y_train[10], len(y_train[10]), __LEARNING_RATE)
-t2 = time.time()
-step_duration = t2 - t1
-print("one sgd step takes {} microseconds".format(step_duration * 1000))
+			obj_in_scene = [info[0] for object in layout]
+			id_holder = dict(current_scene_hidden_states).keys()
+			for obj_id in keys_holder
+				if obj_id not in obj_in_scene:
+					#perform SGD and iterate model if enough steps
+					del current_scene_hidden_states[obj_id]
+			for obj_id in obj_in_scene:
+				if obj_id not in past_scene_hidden_states:
+					past_scene_hidden_states[obj_id] = [0] * hidden_size
+			
+			obj_positions = {obj[0] : obj[1] for obj in layout}
+			for obj in layout:
+				new_scene_hidden_states = {}
+				obj_id = obj[0]
+				obj_position = obj[1]
+				obj_model = models[obj[2]]
+				obj_encoded_position = obj[3]
 
-model = SimpleGRU(__INPUT_DIM, __OUTPUT_DIM, __HIDDEN_DIM)
-train(model, X_train, y_train, __LEARNING_RATE, __NUM_EPOCHS, step_duration)
-save_model(model)
+				pooled_tensor = pool_hidden_states(scene_hidden_states ,obj_positions, obj_position, obj_id)
+
+
