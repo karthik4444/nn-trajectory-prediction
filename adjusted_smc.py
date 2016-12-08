@@ -3,15 +3,15 @@ import numpy as np
 import pdb
 from sklearn.metrics import mean_squared_error
 
-X_full = pickle.load(open('processed_data/X_train.pickle'))
-y_full = pickle.load(open('processed_data/y_train.pickle'))
+X_full = pickle.load(open('train_data/X_train.pickle'))
+y_full = pickle.load(open('train_data/y_train.pickle'))
 
 #calculate mean and variance over samples
 
 #take data and make them a series of data points
 
 num_samples = X_full.shape[0]
-num_train = int(0.8 * num_samples)
+num_train = int(0.6 * num_samples)
 X_train = X_full[0: num_train]
 X_test = X_full[num_train:]
 Y_test = y_full[num_train:]
@@ -23,13 +23,16 @@ delta = []
 #('maxX = ', 13.868879)
 #('minY = ', -2.6931833)
 #('maxY = ', 13.287946)
-x_dim = 11
-y_dim = 9
+maxX = 13.9
+maxY = 13.9
+x_dim = 5
+y_dim = 4
+n_bi_samples = 5
 total_classes = x_dim * y_dim
 transition = np.zeros((total_classes + 1, total_classes + 1))
 
 def getClass(x, y):
-    return int((x + 7)/2) * y_dim + int((y + 3)/2)
+    return int((x + 7)/4.2) * y_dim + int((y + 3)/4.25)
 
 #train
 #1. calculate bivariate gaussian for step size.
@@ -68,14 +71,21 @@ for i in xrange(num_test):
         x1Class = getClass(x1, y1)
         currHigh = (-1, -1)
         highVal = -1
-        for _ in range(5):
+        for _ in range(n_bi_samples):
             sample = np.random.multivariate_normal(mean, cov)
-            x2, y2 = x1 + sample[0], x2 + sample[0]
+            x2, y2 = max(min(x1 + sample[0], maxX), 0), max(min(y1 + sample[1], maxY), 0)
             classVal = getClass(x2, y2)
-            if (classVal > highVal):
-                highVal = classVal
-                currHigh = (x2, y2)
-        pred[i].append(currHigh)
+            try:
+                if (transition[x1Class, classVal] > highVal):
+                    highVal = transition[x1Class, classVal]
+                    currHigh = (x2, y2)
+	    except IndexError:
+		print("x1Class ", x1Class)
+		print("x2Class ", classVal)
+  	        print("(x1, y1) = ", x1, y1)
+ 		print("(x2, y2) = ", x2, y2)
+  		print("(i, j) = ", i, j)
+	pred[i].append(currHigh)
 
 error = 0
 nSamples = 0
@@ -97,12 +107,12 @@ for i in xrange(num_train):
         x1Class = getClass(x1, y1)
         currHigh = (-1, -1)
         highVal = -1
-	for _ in range(5):
+	for _ in range(n_bi_samples):
             sample = np.random.multivariate_normal(mean, cov)
-            x2, y2 = x1 + sample[0], x2 + sample[0]
+            x2, y2 = max(min(x1 + sample[0], maxX), 0), max(min(y1 + sample[1], maxY), 0)
             classVal = getClass(x2, y2)
-            if (classVal > highVal):
-                highVal = classVal
+            if (transition[x1Class, classVal] > highVal):
+                highVal = transition[x1Class, classVal]
                 currHigh = (x2, y2)
         pred[i].append(currHigh)
 
@@ -116,7 +126,5 @@ for i in xrange(num_train):
 
 print("Total Train Error: ", error)
 print("Average Train Error: ", error/nSamples)
-
-
 
 
