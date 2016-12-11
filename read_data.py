@@ -7,10 +7,11 @@ scene = {}
 count = 0
 
 while True:
+	count += 1
 	line = dataset_seq_eth.readline()
 	if line == '':
 		break
-	if count % 20 != 0:
+	if (count-1) % 20 != 0:
 		continue
 	row = line.split(" ")
 	frame = int(row[5])
@@ -23,7 +24,7 @@ while True:
 		scene[frame].append(info)
 	else:
 		scene[frame] = [info]
-	count += 1
+
 
 save_processed_scene(scene)
 

@@ -12,7 +12,7 @@ _class = 2
 __INPUT_DIM = 2
 __OUTPUT_DIM = 2
 __HIDDEN_DIM = 128
-__NUM_EPOCHS = 1 #200
+__NUM_EPOCHS = 10 #200
 __LEARNING_RATE = 0.003
 __POOLING_SIZE = 20
 
@@ -29,6 +29,7 @@ def map_tensor_index(pos, ref_pos):
 
 def pool_hidden_states(obj_id, position, hidden_states):
 	pooled_tensor = [[[0] * __HIDDEN_DIM] * __POOLING_SIZE] * __POOLING_SIZE
+	return pooled_tensor
 	bound = __POOLING_SIZE * 8 / 2 
 	window_limits_upper_bound = (position[0] + bound, position[1] + bound)
 	window_limits_lower_bound = (position[0] - bound, position[1] - bound)
@@ -50,7 +51,6 @@ def step_through_scene(scene, models):
 	obj_class = {}
 	for frame in frames:
 		#parse through scene to gather hidden states of objects
-		print(frame)
 		hidden_states = {}
 		for obj in scene[frame]:
 			obj_class[obj[_id]] = obj[_class]
@@ -86,13 +86,13 @@ def train(classes, models, scene, learning_rates, check_cost_after, num_epochs):
 				if len(ground_truth_path[_id]) > 8:
 					c = obj_class[_id]
 					losses[c].append(models[c].loss(ground_truth_path[_id][:8], neighbor_tracker[_id][:8], ground_truth_path[_id][8:], neighbor_tracker[_id][8:]))
-			for c in previous_costs:
-				cost = sum(losses[c]) / len(losses[c])
+			for c in classes:
+				cost = sum(losses[c])/len(losses[c]) if len(losses[c]) else 0
 				print ("{}: COST IS {}".format(c, cost))
-				if cost > previous_cost[c]:
+				if cost > previous_costs[c]:
 					learning_rates[c] *= 0.5
 					print ("{} LEARNING RATE HAS BEEN HALVED".format(c))
-				previous_cost[c] = cost
+				previous_costs[c] = cost
 
 		for _id in ground_truth_path:
 			if len(ground_truth_path[_id]) > 8:
