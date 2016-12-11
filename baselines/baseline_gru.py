@@ -1,4 +1,4 @@
-import numpy as np
+limport numpy as np
 import theano as theano
 import theano.tensor as T
 from theano.gradient import grad_clip
