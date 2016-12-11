@@ -3,6 +3,7 @@ import numpy as np
 from pooling_gru import PoolingGRU
 from utils import *
 import math
+import pdb
 
 _id = 0
 _position = 1
@@ -12,7 +13,7 @@ _class = 2
 __INPUT_DIM = 2
 __OUTPUT_DIM = 2
 __HIDDEN_DIM = 128
-__NUM_EPOCHS = 10 #200
+__NUM_EPOCHS = 10 #100
 __LEARNING_RATE = 0.003
 __POOLING_SIZE = 20
 
@@ -29,7 +30,6 @@ def map_tensor_index(pos, ref_pos):
 
 def pool_hidden_states(obj_id, position, hidden_states):
 	pooled_tensor = [[[0] * __HIDDEN_DIM] * __POOLING_SIZE] * __POOLING_SIZE
-	return pooled_tensor
 	bound = __POOLING_SIZE * 8 / 2 
 	window_limits_upper_bound = (position[0] + bound, position[1] + bound)
 	window_limits_lower_bound = (position[0] - bound, position[1] - bound)
@@ -44,13 +44,16 @@ def pool_hidden_states(obj_id, position, hidden_states):
 	return pooled_tensor
 
 def step_through_scene(scene, models):
+	print("STEPPING THROUGH SCENE")
 	frames = scene.keys()
 	position_tracker = {}
 	neighbor_tracker = {}
 	ground_truth_path = {}
 	obj_class = {}
 	for frame in frames:
+		pdb.set_trace()
 		#parse through scene to gather hidden states of objects
+		print("frame {} / {}".format(frame, len(frames)))
 		hidden_states = {}
 		for obj in scene[frame]:
 			obj_class[obj[_id]] = obj[_class]
