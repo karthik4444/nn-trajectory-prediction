@@ -138,7 +138,7 @@ class PoolingGRU:
                     ])
 
         self.predict = theano.function([x, H], o[-1], allow_input_downcast=True)
-        self.get_hidden = theano.function([x, H], s1[-1])
+        self.get_hidden = theano.function([x, H], s1[-1], allow_input_downcast=True)
         self.loss = theano.function([x, H, y, Hf], loss, allow_input_downcast=True)
 
 

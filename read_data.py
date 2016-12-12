@@ -4,17 +4,15 @@ from utils import *
 #processing data for seq_eth dataset
 dataset_seq_eth = open('annotations/bookstore/video0/annotations.txt')
 scene = {}
-count = 0
 
 while True:
-	count += 1
 	line = dataset_seq_eth.readline()
 	if line == '':
 		break
-	if (count-1) % 20 != 0:
-		continue
 	row = line.split(" ")
 	frame = int(row[5])
+	if frame % 20 != 0:
+		continue
 	x = (int(row[1]) + int(row[3])) / 2
 	y = (int(row[2]) + int(row[4])) / 2
 	label = row[-1][1:-2]

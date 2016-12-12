@@ -26,7 +26,7 @@ def add_to_tracking_list(k, v, d):
 def map_tensor_index(pos, ref_pos):
 	x = math.ceil((pos[0] - ref_pos[0])/8) + 9
 	y = math.ceil((pos[1] - ref_pos[1])/8) + 9
-	return (x,y)
+	return (int(x),int(y))
 
 def pool_hidden_states(obj_id, position, hidden_states):
 	pooled_tensor = [[[0] * __HIDDEN_DIM] * __POOLING_SIZE] * __POOLING_SIZE
@@ -46,6 +46,7 @@ def pool_hidden_states(obj_id, position, hidden_states):
 def step_through_scene(scene, models):
 	print("STEPPING THROUGH SCENE")
 	frames = scene.keys()
+	frames = sorted(frames)
 	position_tracker = {}
 	neighbor_tracker = {}
 	ground_truth_path = {}
@@ -59,13 +60,14 @@ def step_through_scene(scene, models):
 			obj_class[obj[_id]] = obj[_class]
 			if (obj[_id] in ground_truth_path):
 				h = models[obj[_class]].get_hidden(ground_truth_path[obj[_id]], neighbor_tracker[obj[_id]])
+				h = h.tolist()
 				hidden_states[obj[_id]] = (obj[_position], h)
 
 		#parse through scene to gather training criteria
 		for obj in scene[frame]:
 			nsteps = len(ground_truth_path[obj[_id]]) if (obj[_id] in ground_truth_path) else 0
-			pos = models[obj[_class]].predict(position_tracker[obj[_id]], neighbor_tracker[obj[_id]]) if (nsteps > 8) else obj[_position]
-
+			pos = models[obj[_class]].predict(position_tracker[obj[_id]], neighbor_tracker[obj[_id]]).tolist() if (nsteps > 8) else obj[_position]
+			
 			add_to_tracking_list(obj[_id], obj[_position], ground_truth_path)
 			add_to_tracking_list(obj[_id], pos, position_tracker)
 
@@ -76,6 +78,7 @@ def step_through_scene(scene, models):
 def train(classes, models, scene, learning_rates, check_cost_after, num_epochs): 
 	print("TRAINING MODELS")
 	frames = scene.keys()
+	frames = sorted(frames)
 	previous_costs = {model: math.inf for model in classes}
 	for epoch in range(num_epochs):
 
