@@ -54,7 +54,7 @@ def step_through_scene(scene, models):
 	for frame in frames:
 		pdb.set_trace()
 		#parse through scene to gather hidden states of objects
-		print("frame {} / {}".format(frame, len(frames)))
+		print "frame {} / {}".format(frame, len(frames))
 		hidden_states = {}
 		for obj in scene[frame]:
 			obj_class[obj[_id]] = obj[_class]
@@ -79,10 +79,10 @@ def train(classes, models, scene, learning_rates, check_cost_after, num_epochs):
 	print("TRAINING MODELS")
 	frames = scene.keys()
 	frames = sorted(frames)
-	previous_costs = {model: math.inf for model in classes}
+	previous_costs = {model: float("inf") for model in classes}
 	for epoch in range(num_epochs):
 
-		print("EPOCH {} / {}".format(epoch+1, num_epochs))
+		print "EPOCH {} / {}".format(epoch+1, num_epochs)
 
 		obj_class, neighbor_tracker, ground_truth_path = step_through_scene(scene, models)
 		
@@ -94,10 +94,10 @@ def train(classes, models, scene, learning_rates, check_cost_after, num_epochs):
 					losses[c].append(models[c].loss(ground_truth_path[_id][:8], neighbor_tracker[_id][:8], ground_truth_path[_id][8:], neighbor_tracker[_id][8:]))
 			for c in classes:
 				cost = sum(losses[c])/len(losses[c]) if len(losses[c]) else 0
-				print ("{}: COST IS {}".format(c, cost))
+				print "{}: COST IS {}".format(c, cost)
 				if cost > previous_costs[c]:
 					learning_rates[c] *= 0.5
-					print ("{} LEARNING RATE HAS BEEN HALVED".format(c))
+					print "{} LEARNING RATE HAS BEEN HALVED".format(c)
 				previous_costs[c] = cost
 
 		for _id in ground_truth_path:
@@ -106,7 +106,7 @@ def train(classes, models, scene, learning_rates, check_cost_after, num_epochs):
 				models[c].sgd_step(ground_truth_path[_id][:8], neighbor_tracker[_id][:8], ground_truth_path[_id][8:], neighbor_tracker[_id][8:], learning_rates[c])
 					
 
-print("CREATING MODELS")
+print "CREATING MODELS"
 classes = ["Pedestrian", "Biker", "Skater", "Cart", "Bus", "Car"]
 models = {label: PoolingGRU(__INPUT_DIM, __OUTPUT_DIM, __POOLING_SIZE, __HIDDEN_DIM) for label in classes}
 
