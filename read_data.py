@@ -2,22 +2,23 @@
 from utils import *
 
 #processing data for seq_eth dataset
-dataset_seq_eth = open('annotations/bookstore/video0/annotations.txt')
+dataset = open('annotations/deathCircle/video0/annotations.txt')
 scene = {}
 
 while True:
-	line = dataset_seq_eth.readline()
+	line = dataset.readline()
 	if line == '':
 		break
 	row = line.split(" ")
 	frame = int(row[5])
-	if frame % 20 != 0:
+	if frame % 18 != 0:
 		continue
+
 	x = (int(row[1]) + int(row[3])) / 2
 	y = (int(row[2]) + int(row[4])) / 2
 	label = row[-1][1:-2]
-	object_id = int(row[1])
-	info = [object_id, (x,y), label]
+	member_id = int(row[0])
+	info = [member_id, (x,y), label]
 	if frame in scene:
 		scene[frame].append(info)
 	else:
@@ -25,4 +26,22 @@ while True:
 
 
 save_processed_scene(scene)
+
+def extract_naive_dataset(s):
+	frames = s.keys()
+	frames = sorted(frames)
+	occupants = {}
+	for frame in frames:
+		for member in s[frame]:
+			if member[2] == "Biker":
+				if member[0] not in occupants: occupants[member[0]] = []
+				occupants[member[0]].append(member[1])
+	x_train = [occupants[member][:50] for member in occupants if len(occupants[member]) > 50]
+	y_train = [occupants[member][50:] for member in occupants if len(occupants[member]) > 50]
+	return x_train, y_train
+
+X, y = extract_naive_dataset(scene)
+save_training_set(X,y)
+
+
 

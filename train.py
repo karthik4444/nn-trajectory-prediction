@@ -1,9 +1,10 @@
 #training script for neural nets
 import numpy as np
 from pooling_gru import PoolingGRU
+from baseline.naive_gru import NaiveGRU
 from utils import *
-import math
 import pdb
+import argparse
 
 _id = 0
 _position = 1
@@ -13,7 +14,7 @@ _class = 2
 __INPUT_DIM = 2
 __OUTPUT_DIM = 2
 __HIDDEN_DIM = 128
-__NUM_EPOCHS = 10 #100
+__NUM_EPOCHS = 30 #100
 __LEARNING_RATE = 0.003
 __POOLING_SIZE = 20
 
@@ -28,13 +29,13 @@ def map_tensor_index(pos, ref_pos):
 	y = math.ceil((pos[1] - ref_pos[1])/8) + 9
 	return (int(x),int(y))
 
-def pool_hidden_states(obj_id, position, hidden_states):
+def pool_hidden_states(member_id, position, hidden_states):
 	pooled_tensor = [[[0] * __HIDDEN_DIM] * __POOLING_SIZE] * __POOLING_SIZE
 	bound = __POOLING_SIZE * 8 / 2 
 	window_limits_upper_bound = (position[0] + bound, position[1] + bound)
 	window_limits_lower_bound = (position[0] - bound, position[1] - bound)
 	for ID in hidden_states:
-		if ID != obj_id:
+		if ID != member_id:
 			pos = hidden_states[ID][0]
 			within_upper_bound = (pos[0] <= window_limits_upper_bound[0]) & (pos[1] <= window_limits_upper_bound[1])
 			within_lower_bound = (pos[0] > window_limits_lower_bound[0]) & (pos[1] > window_limits_lower_bound[1])
@@ -43,54 +44,50 @@ def pool_hidden_states(obj_id, position, hidden_states):
 				pooled_tensor[x][y] = hidden_states[ID][1]
 	return pooled_tensor
 
-def step_through_scene(scene, models):
+def step_through_scene(scene, models, epoch, num_epochs):
 	print("STEPPING THROUGH SCENE")
 	frames = scene.keys()
 	frames = sorted(frames)
 	position_tracker = {}
 	neighbor_tracker = {}
 	ground_truth_path = {}
-	obj_class = {}
+	member_class = {}
 	for frame in frames:
-		pdb.set_trace()
-		#parse through scene to gather hidden states of objects
-		print "frame {} / {}".format(frame, len(frames))
+		#parse through scene to gather hidden states of memberects
+		print "EPOCH {} / {} : FRAME {} / {}".format(epoch, num_epochs, frame, frames[-1])
 		hidden_states = {}
-		for obj in scene[frame]:
-			obj_class[obj[_id]] = obj[_class]
-			if (obj[_id] in ground_truth_path):
-				h = models[obj[_class]].get_hidden(ground_truth_path[obj[_id]], neighbor_tracker[obj[_id]])
+		for member in scene[frame]:
+			member_class[member[_id]] = member[_class]
+			if (member[_id] in ground_truth_path):
+				h = models[member[_class]].get_hidden(ground_truth_path[member[_id]], neighbor_tracker[member[_id]])
 				h = h.tolist()
-				hidden_states[obj[_id]] = (obj[_position], h)
+				hidden_states[member[_id]] = (member[_position], h)
 
 		#parse through scene to gather training criteria
-		for obj in scene[frame]:
-			nsteps = len(ground_truth_path[obj[_id]]) if (obj[_id] in ground_truth_path) else 0
-			pos = models[obj[_class]].predict(position_tracker[obj[_id]], neighbor_tracker[obj[_id]]).tolist() if (nsteps > 8) else obj[_position]
+		for member in scene[frame]:
+			nsteps = len(ground_truth_path[member[_id]]) if (member[_id] in ground_truth_path) else 0
+			pos = models[member[_class]].predict(position_tracker[member[_id]], neighbor_tracker[member[_id]]).tolist() if (nsteps > 8) else member[_position]
 			
-			add_to_tracking_list(obj[_id], obj[_position], ground_truth_path)
-			add_to_tracking_list(obj[_id], pos, position_tracker)
+			add_to_tracking_list(member[_id], member[_position], ground_truth_path)
+			add_to_tracking_list(member[_id], pos, position_tracker)
 
-			pooled_tensor = pool_hidden_states(obj[_id], pos, hidden_states)
-			add_to_tracking_list(obj[_id], pooled_tensor, neighbor_tracker)
-	return obj_class, neighbor_tracker, ground_truth_path
+			pooled_tensor = pool_hidden_states(member[_id], pos, hidden_states)
+			add_to_tracking_list(member[_id], pooled_tensor, neighbor_tracker)
+	return member_class, neighbor_tracker, ground_truth_path
 
-def train(classes, models, scene, learning_rates, check_cost_after, num_epochs): 
+def train_with_pooling(classes, models, scene, learning_rates, num_epochs, evaluate_loss_after=3): 
 	print("TRAINING MODELS")
 	frames = scene.keys()
 	frames = sorted(frames)
 	previous_costs = {model: float("inf") for model in classes}
 	for epoch in range(num_epochs):
-
-		print "EPOCH {} / {}".format(epoch+1, num_epochs)
-
-		obj_class, neighbor_tracker, ground_truth_path = step_through_scene(scene, models)
+		member_class, neighbor_tracker, ground_truth_path = step_through_scene(scene, models, epoch+1, num_epochs)
 		
-		if epoch % check_cost_after == 0:
+		if epoch % evaluate_loss_after == 0:
 			losses = {model: [] for model in classes}
 			for _id in ground_truth_path:
 				if len(ground_truth_path[_id]) > 8:
-					c = obj_class[_id]
+					c = member_class[_id]
 					losses[c].append(models[c].loss(ground_truth_path[_id][:8], neighbor_tracker[_id][:8], ground_truth_path[_id][8:], neighbor_tracker[_id][8:]))
 			for c in classes:
 				cost = sum(losses[c])/len(losses[c]) if len(losses[c]) else 0
@@ -102,20 +99,50 @@ def train(classes, models, scene, learning_rates, check_cost_after, num_epochs):
 
 		for _id in ground_truth_path:
 			if len(ground_truth_path[_id]) > 8:
-				c = obj_class[_id]
+				c = member_class[_id]
 				models[c].sgd_step(ground_truth_path[_id][:8], neighbor_tracker[_id][:8], ground_truth_path[_id][8:], neighbor_tracker[_id][8:], learning_rates[c])
-					
+		for c in models:
+			save_model(models[c], c, True)
 
-print "CREATING MODELS"
-classes = ["Pedestrian", "Biker", "Skater", "Cart", "Bus", "Car"]
-models = {label: PoolingGRU(__INPUT_DIM, __OUTPUT_DIM, __POOLING_SIZE, __HIDDEN_DIM) for label in classes}
+def train_naively(model, x_train, y_train, learning_rate, num_epochs, category, evaluate_loss_after=3):
+	last_cost = float("inf")
+	for epoch in range(num_epochs):
+		print("EPOCH: {} /{}".format(epoch+1, num_epochs))
+		if ((epoch+1) % evaluate_loss_after == 0):
+			cost = model.cost(x_train, y_train)
+			print("CURRENT COST IS {}".format(cost))
+			if (cost > last_loss):
+				learning_rate = learning_rate * 0.5
+				last_cost = cost
+				print("Learning rate was halved to {}".format(learning_rate))
+		#training
+		for example in range(len(y_train)):
+			model.sgd_step(x_train[example], y_train[example], len(y_train[example]), learning_rate)
+		save_model(model, category, False)
 
-#loading data
-scene = load_processed_scene()
 
-learning_rates = {model : __LEARNING_RATE for model in classes}
-check_cost_after = 5
+parser  = argparse.ArgumentParser(description='Pick Training Mode.')
+parser.add_argument('mode', type=str, nargs=1, help="which mode to use for training? either 'pooling' or 'naive'")
+mode = parser.parse_args().mode[-1]
 
-train(classes, models, scene, learning_rates, check_cost_after, __NUM_EPOCHS)
+evaluate_cost_after = 5
 
-				
+if mode == "pooling":
+	print('creating models')
+	scene = load_processed_scene()
+	classes = ["Pedestrian", "Biker", "Skater", "Cart", "Bus", "Car"]
+	learning_rates = {model : __LEARNING_RATE for model in classes}
+	models = {label: PoolingGRU(__INPUT_DIM, __OUTPUT_DIM, __POOLING_SIZE, __HIDDEN_DIM) for label in classes}
+	train_with_pooling(classes, models, scene, learning_rates, __NUM_EPOCHS, evaluate_cost_after)
+
+elif mode == "naive":
+	print('creating model')
+	model = NaiveGRU(__INPUT_DIM, __OUTPUT_DIM, __HIDDEN_DIM)
+	x_train, y_train = load_training_set()
+	print('training model')
+	train_naively(model, x_train, y_train, __LEARNING_RATE, __NUM_EPOCHS, "Biker", evaluate_cost_after)
+
+else:
+	print("enter a valid mode: either 'pooling' or 'naive'")
+
+

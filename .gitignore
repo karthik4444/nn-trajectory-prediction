@@ -1,3 +1,4 @@
 *.pickle
-utils.pyc
+*.pyc
+*.npz
 __pycache__/
