@@ -11,7 +11,7 @@ while True:
 		break
 	row = line.split(" ")
 	frame = int(row[5])
-	if frame % 19 != 0:
+	if frame % 16 != 0:
 		continue
 
 	x = (int(row[1]) + int(row[3])) / 2
