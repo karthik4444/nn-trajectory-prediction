@@ -52,8 +52,7 @@ class NaiveGRU:
     def __theano_build(self):
         E, U, W, V, b, c = self.E, self.U, self.W, self.V, self.b, self.c
         x = T.fmatrix('x')
-        y = T.fmatrix('y')
-        k = T.iscalar('k')
+        y = T.fvector('y')
 
         def ReLU(x):
             return T.switch(x<0, 0, x)
@@ -81,13 +80,7 @@ class NaiveGRU:
             )
 
         #using first 8 steps to predict the future trajectory
-        [preds, s2], updates2 = theano.scan(
-            forward_prop_step,
-            n_steps=k,
-            truncate_gradient=self.bptt_truncate,
-            outputs_info=[dict(initial=x[-1].astype(theano.config.floatX)), dict(initial=s1[-1].astype(theano.config.floatX))]
-            )
-        loss = T.mean((preds - y) ** 2)
+        loss = T.dot((o[-1] - y), (o[-1] - y))
 
 
 
@@ -118,7 +111,7 @@ class NaiveGRU:
         #1e-6 gaurds against division by 0
         #gradient descent update of parameters
         self.sgd_step = theano.function(
-            [x, y, k, learning_rate, theano.In(decay, value=0.9)],
+            [x, y, learning_rate, theano.In(decay, value=0.9)],
             [],
             allow_input_downcast=True,
             updates=[
@@ -135,10 +128,10 @@ class NaiveGRU:
                     (self.mc, mc)
                     ])
 
-        self.predict = theano.function([x, k], preds, allow_input_downcast=True)
-        self.loss = theano.function([x, y, k], loss, allow_input_downcast=True)
+        self.predict = theano.function([x], o[-1], allow_input_downcast=True)
+        self.loss = theano.function([x, y], loss, allow_input_downcast=True)
 
         def cost(X, Y):
             #average loss = cost
-            return (np.sum([self.loss(x,y,len(y)) for x,y in zip(X,Y)])) / len(X)
+            return (np.sum([self.loss(x,y) for x,y in zip(X,Y)])) / len(X)
         self.cost = cost

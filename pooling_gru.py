@@ -46,9 +46,8 @@ class PoolingGRU:
     def __theano_build(self):
         D, E, U, W, V, b, c = self.D, self.E, self.U, self.W, self.V, self.b, self.c
         x = T.fmatrix('x')
-        y = T.fmatrix('y')
+        y = T.fvector('y')
         H = T.ftensor4('H')
-        Hf = T.ftensor4('Hf')
 
         def ReLU(x):
             return T.switch(x<0, 0, x)
@@ -78,15 +77,7 @@ class PoolingGRU:
             outputs_info=[None, dict(initial=T.zeros(self.hidden_dim))]
             )
 
-        #using first 8 steps to predict the future trajectory
-        [preds, s2], updates2 = theano.scan(
-            forward_prop_step,
-            sequences = Hf,
-            truncate_gradient=self.bptt_truncate,
-            outputs_info=[dict(initial=x[-1].astype(theano.config.floatX)), dict(initial=s1[-1].astype(theano.config.floatX))]
-            )
-
-        loss = T.mean((preds - y) ** 2)
+        loss = T.dot(o[-1] - y, o[-1] - y)
 
         #back-propogation through time. Truncation is handled upon calculating o.
         dD = T.grad(loss, D)
@@ -117,7 +108,7 @@ class PoolingGRU:
         #1e-6 gaurds against division by 0
         #gradient descent update of parameters
         self.sgd_step = theano.function(
-            [x, H, y, Hf, learning_rate, theano.In(decay, value=0.9)],
+            [x, H, y, learning_rate, theano.In(decay, value=0.9)],
             [],
             allow_input_downcast=True,
             updates=[
@@ -139,6 +130,10 @@ class PoolingGRU:
 
         self.predict = theano.function([x, H], o[-1], allow_input_downcast=True)
         self.get_hidden = theano.function([x, H], s1[-1], allow_input_downcast=True)
-        self.loss = theano.function([x, H, y, Hf], loss, allow_input_downcast=True)
+        self.loss = theano.function([x, H, y], loss, allow_input_downcast=True)
 
+        def cost(X, H, Y):
+            #average loss = cost
+            return (np.sum([self.loss(x,h,y) for x,h,y in zip(X,H,Y)])) / len(X)
+        self.cost = cost
 

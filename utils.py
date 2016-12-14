@@ -40,12 +40,27 @@ def save_model(model, category, is_pooling_model):
 
 	np.savez('models/' + category.lower() + '/' + model_type, D=D, E=E, U=U, W=W, V=V, b=b, c=c)
 
-def load_model(model):
-	npzfile = np.load('models/biker/naive_model')
-	U, V, W = npzfile["U"], npzfile["V"], npzfile["W"]
-	model.hidden_dim = U.shape[1]
-	model.input_dim = U.shape[2]
-	model.output_dim = V.shape[0]
+def load_model(model, is_pooling_model, category):
+	model_type = "pooling_model" if (is_pooling_model) else "naive_model"
+
+	npzfile = np.load('models/' + category.lower() + '/' + model_type + '.npz')
+	D, E, U, W, V, b, c = [npzfile["D"],
+					 npzfile["E"], 
+					 npzfile["U"], 
+					 npzfile["W"],
+					 npzfile["V"],
+					 npzfile["b"],
+					 npzfile["c"]]
+
+	model.hidden_dim = E.shape[0]
+	model.input_dim = E.shape[1]
+	model.output_dim = c.shape[0]
+	model.E.set_value(E)
 	model.U.set_value(U)
-	model.V.set_value(V)
 	model.W.set_value(W)
+	model.V.set_value(V)
+	model.b.set_value(b)
+	model.c.set_value(c)
+
+	if is_pooling_model:
+		model.D.set_value(D)
