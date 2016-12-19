@@ -2,19 +2,19 @@ import pickle
 import sys
 import numpy as np
 
-def save_processed_scene(scene):
-	pickle.dump(scene, open('train_data/scene.pickle', 'wb'))
+def save_processed_scene(scene, s):
+	pickle.dump(scene, open('train_data/pooling/scene' + str(s) + '/scene.pickle', 'wb'))
 
-def load_processed_scene():
-	return pickle.load(open('train_data/scene.pickle', 'rb'))
+def load_processed_scene(s):
+	return pickle.load(open('train_data/pooling/scene' + str(s) + '/scene.pickle', 'rb'))
 
-def save_training_set(X, y):
-	pickle.dump(X, open('train_data/X.pickle', 'wb'))
-	pickle.dump(y, open('train_data/y.pickle', 'wb'))
+def save_training_set(X, y, s, c):
+	pickle.dump(X, open('train_data/naive/' + c + '/X' + str(s) + '.pickle', 'wb'))
+	pickle.dump(y, open('train_data/naive/' + c + '/y' + str(s) + '.pickle', 'wb'))
 
-def load_training_set():
-	X = pickle.load(open('train_data/X.pickle', 'rb'))
-	y = pickle.load(open('train_data/y.pickle', 'rb'))
+def load_training_set(s, c):
+	X = pickle.load(open('train_data/naive/' + c + '/X' + str(s) + '.pickle', 'rb'))
+	y = pickle.load(open('train_data/naive/' + c + '/y' + str(s) + '.pickle', 'rb'))
 	return X,y
 
 def log_time_remaining(step_duration, num_examples, num_epochs, epoch):

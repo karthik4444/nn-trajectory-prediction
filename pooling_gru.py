@@ -49,10 +49,14 @@ class PoolingGRU:
         y = T.fvector('y')
         H = T.ftensor4('H')
 
+        xt = T.fvector('xt')
+        Ht = T.ftensor3('Ht')
+        s_prev = T.fvector('s_prev')
+
         def ReLU(x):
             return T.switch(x<0, 0, x)
 
-        def forward_prop_step(H_t, x_t, s_prev):
+        def time_step(H_t, x_t, s_prev):
             #Embedding Layer with ReLU non-linearity
             H_e = ReLU(D.dot(H_t.flatten(1)))
             x_e = ReLU(E.dot(x_t))
@@ -67,17 +71,23 @@ class PoolingGRU:
             o_t = V.dot(s_t) + c
 
             return [o_t, s_t]
+        
+        np, nh = time_step(Ht, xt, s_prev)
+        self.time_step = theano.function([xt, Ht, s_prev], [np, nh], allow_input_downcast=True)
 
         #feed-forward for training example.
         #initializing the hidden state with first 8 steps
         [o, s1], updates1 = theano.scan(
-            forward_prop_step,
+            time_step,
             sequences=[H, x],
             truncate_gradient=self.bptt_truncate,
             outputs_info=[None, dict(initial=T.zeros(self.hidden_dim))]
             )
+        self.predict = theano.function([x, H], o[-1], allow_input_downcast=True)
 
         loss = T.dot(o[-1] - y, o[-1] - y)
+        self.loss = theano.function([x, H, y], loss, allow_input_downcast=True)
+
 
         #back-propogation through time. Truncation is handled upon calculating o.
         dD = T.grad(loss, D)
@@ -127,13 +137,3 @@ class PoolingGRU:
                     (self.mb, mb),
                     (self.mc, mc)
                     ])
-
-        self.predict = theano.function([x, H], o[-1], allow_input_downcast=True)
-        self.get_hidden = theano.function([x, H], s1[-1], allow_input_downcast=True)
-        self.loss = theano.function([x, H, y], loss, allow_input_downcast=True)
-
-        def cost(X, H, Y):
-            #average loss = cost
-            return (np.sum([self.loss(x,h,y) for x,h,y in zip(X,H,Y)])) / len(X)
-        self.cost = cost
-

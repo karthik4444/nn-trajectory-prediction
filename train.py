@@ -15,15 +15,12 @@ _class = 2
 __INPUT_DIM = 2
 __OUTPUT_DIM = 2
 __HIDDEN_DIM = 128
-__NUM_EPOCHS = 100 #100
+__NUM_EPOCHS = 100
 __LEARNING_RATE = 0.003
 __POOLING_SIZE = 20
+__NUM_SCENES = 4
 
-def add_to_tracking_list(k, v, d):
-	if k in d:
-		d[k].append(v)
-	else:  
-		d[k] = [v]
+classes = ["Pedestrian", "Biker", "Skater", "Cart"]
 
 def map_tensor_index(pos, ref_pos):
 	x = math.ceil((pos[0] - ref_pos[0])/8) + 9
@@ -38,111 +35,96 @@ def pool_hidden_states(member_id, position, hidden_states):
 	for ID in hidden_states:
 		if ID != member_id:
 			pos = hidden_states[ID][0]
-			within_upper_bound = (pos[0] <= window_limits_upper_bound[0]) & (pos[1] <= window_limits_upper_bound[1])
-			within_lower_bound = (pos[0] > window_limits_lower_bound[0]) & (pos[1] > window_limits_lower_bound[1])
-			if within_upper_bound & within_lower_bound:
+			within_upper_bound = (pos[0] <= window_limits_upper_bound[0]) and (pos[1] <= window_limits_upper_bound[1])
+			within_lower_bound = (pos[0] > window_limits_lower_bound[0]) and (pos[1] > window_limits_lower_bound[1])
+			if within_upper_bound and within_lower_bound:
 				x,y = map_tensor_index(pos, position)
 				pooled_tensor[x][y] = hidden_states[ID][1]
 	return pooled_tensor
 
-def step_through_scene(scene, models, epoch, num_epochs):
-	print "STEPPING THROUGH SCENE" 
-	frames = scene.keys()
+def step_through_scene(models, scene, learning_rates, epoch, num_epochs, calculate_loss):
+	outlay_dict = scene[0]
+	class_dict = scene[1]
+	path_dict = scene[2]
+	frames = outlay_dict.keys()
 	frames = sorted(frames)
-	neighbor_tracker = {}
-	ground_truth_path = {}
-	member_class = {}
+	cost = {c: [] for c in classes}
+	prev_hidden_states = {}
+	pooled_tensors = {}
 	for frame in frames:
-		#parse through scene to gather hidden states of memberects
-		print "EPOCH {} / {} : FRAME {} / {}".format(epoch, num_epochs, frame, frames[-1])
-		hidden_states = {}
-		for member in scene[frame]:
-			member_class[member[_id]] = member[_class]
-			if (member[_id] in ground_truth_path):
-				h = models[member[_class]].get_hidden(ground_truth_path[member[_id]], neighbor_tracker[member[_id]])
-				h = h.tolist()
-				hidden_states[member[_id]] = (member[_position], h)
+			print "EPOCH {} / {} : FRAME {} / {}".format(epoch+1, num_epochs, frame, frames[-1])
+			frame_occupants = outlay_dict[frame].keys()
+			hidden_states = {}
+			for occupant in frame_occupants:
+				if occupant not in pooled_tensors:
+					pooled_tensors[occupant] = []
+				#pool tensors
+				position = outlay_dict[frame][occupant]
+				c = class_dict[occupant]
+				pooled_tensor = pool_hidden_states(occupant, position, hidden_states)
+				pooled_tensors[occupant].append(pooled_tensor)
+				h = prev_hidden_states[occupant][1] if occupant in prev_hidden_states else [0] * __HIDDEN_DIM
+				ns, nh = models[c].time_step(position, pooled_tensor, h)
+				hidden_states[occupant] = (position, nh.tolist())
 
-		#parse through scene to gather training criteria
-		for member in scene[frame]:
-			add_to_tracking_list(member[_id], member[_position], ground_truth_path)
+				path = path_dict[frame][occupant]
+				if len(path) > 18:
+					y = path[-1]
+					x = path[-19:-1]
+					H = pooled_tensors[occupant][-18:]
+					if calculate_loss:
+						cost[c].append(models[c].loss(x, H, y))
+					else:
+						models[c].sgd_step(x, H, y, learning_rates[c])
+			prev_hidden_states = hidden_states
+	if calculate_loss:
+		return {c: sum(cost[c])/len(cost[c]) for c in cost}
 
-			pooled_tensor = pool_hidden_states(member[_id], member[_position], hidden_states)
-			add_to_tracking_list(member[_id], pooled_tensor, neighbor_tracker)
 
-	return member_class, neighbor_tracker, ground_truth_path
-
-def train_with_pooling(classes, models, scene, learning_rates, num_epochs, evaluate_loss_after=5): 
-	print "TRAINING MODELS"
-	frames = scene.keys()
-	frames = sorted(frames)
-	previous_costs = {model: float("inf") for model in classes}
-
+def train_with_pooling(models, num_scenes, learning_rates, num_epochs, evaluate_loss_after=5):
+	prev_cost = {c: float("inf") for c in classes}
 	for epoch in range(num_epochs):
-		member_class, neighbor_tracker, ground_truth_path = step_through_scene(scene, models, epoch+1, num_epochs)
-		
-		x_train, xH_train, y_train = {}, {}, {}
-		for member in ground_truth_path:
-			x_train[member], xH_train[member], y_train[member] = [], [], []
-			c = member_class[member]
-			for i in range(0, len(ground_truth_path[member])-30, 10):
-				x_train[member].append(ground_truth_path[i:i+30])
-				xH_train[member].append(neighbor_tracker[i:i+30])
-				y_train[member].append(ground_truth_path[i+30])
+		cost = {c: 0 for c in classes}
+		for s in range(num_scenes):
+			scene = load_processed_scene(s)
+			if (epoch + 1) % evaluate_loss_after == 0:
+				cost_update = step_through_scene(models, scene, learning_rates, epoch, num_epochs, True)
+				cost = {c : cost[c] + cost_update[c] for c in cost}
 
-		for c in classes:
-			if ((epoch+1) % evaluate_loss_after == 0):
-				cost = models[c].cost(x_train[c], xH_train[c], y_train[c])
-				print "CURRENT COST IS {}".format(cost)
+				if (s+1) == num_scenes:
+					for c in cost:
+						print "{} COST : {}".format(c, cost[c])
+						if cost[c] > prev_cost[c]:
+							learning_rates[c] *= 0.5
+							print "LEARNING RATE FOR {} WAS HALVED".format(c)
+					prev_cost = cost
 
-				if (cost > previous_costs[c]):
-					learning_rates[c] *= 0.5
-					print "{} LEARNING RATE HAS BEEN HALVED".format(c)
-				previous_costs[c] = cost
+			step_through_scene(models, scene, learning_rates, epoch, num_epochs, False)
 
-			#training
-			num_examples = len(y_train[c])
-			for example in range(num_examples):
-				models[c].sgd_step(x_train[c][example], xH_train[x][example], y_train[c][example], learning_rates[c])
-			save_model(models[c], c, True)
+			for c in models:
+				save_model(models[c], c, True)
 
 
-		if epoch % evaluate_loss_after == 0:
-			losses = {model: [] for model in classes}
-			for _id in ground_truth_path:
-				if len(ground_truth_path[_id]) > 30:
-					c = member_class[_id]
-					losses[c].append(models[c].loss(ground_truth_path[_id][:50], neighbor_tracker[_id][:50], ground_truth_path[_id][50:], neighbor_tracker[_id][50:]))
-			for c in classes:
-				cost = sum(losses[c])/len(losses[c]) if len(losses[c]) else 0
-				print "{}: COST IS {}".format(c, cost)
-				if cost > previous_costs[c]:
-					learning_rates[c] *= 0.5
-					print "{} LEARNING RATE HAS BEEN HALVED".format(c)
-				previous_costs[c] = cost
-
-		for _id in ground_truth_path:
-			if len(ground_truth_path[_id]) > 50:
-				c = member_class[_id]
-				models[c].sgd_step(ground_truth_path[_id][:50], neighbor_tracker[_id][:50], ground_truth_path[_id][50:], neighbor_tracker[_id][50:], learning_rates[c])
-		for c in models:
-			save_model(models[c], c, True)
-
-def train_naively(model, x_train, y_train, learning_rate, num_epochs, category, evaluate_loss_after=5):
+def train_naively(model, num_scenes, learning_rate, num_epochs, category, evaluate_loss_after=5):
 	last_cost = float("inf")
 	for epoch in range(num_epochs):
 		print "EPOCH: {} /{}".format(epoch+1, num_epochs)
-		if ((epoch+1) % evaluate_loss_after == 0):
-			cost = model.cost(x_train, y_train)
-			print("CURRENT COST IS {}".format(cost))
-			if (cost > last_cost):
-				learning_rate = learning_rate * 0.5
-				print "Learning rate was halved to {}".format(learning_rate) 
-			last_cost = cost
-		#training
-		for example in range(len(y_train)):
-			model.sgd_step(x_train[example], y_train[example], learning_rate)
-		save_model(model, category, False)
+		cost = 0
+		for s in range(num_scenes):
+			x_train, y_train = load_training_set(s, category)
+			print "SCENE: {} /{}".format(s+1, num_scenes)
+			if ((epoch+1) % evaluate_loss_after == 0):
+				cost += model.cost(x_train, y_train)
+				if (s+1) == num_scenes:
+					print("CURRENT COST IS {}".format(cost))
+					if (cost > last_cost):
+						learning_rate = learning_rate * 0.5
+						print "Learning rate was halved to {}".format(learning_rate) 
+					last_cost = cost
+
+			for example in range(len(y_train)):
+				model.sgd_step(x_train[example], y_train[example], learning_rate)
+			save_model(model, category, False)
 
 
 parser  = argparse.ArgumentParser(description='Pick Training Mode.')
@@ -151,20 +133,20 @@ mode = parser.parse_args().mode[-1]
 
 if mode == "pooling":
 	print 'creating models' 
-	scene = load_processed_scene()
-	classes = ["Pedestrian", "Biker", "Skater", "Cart"]
-	learning_rates = {model : __LEARNING_RATE for model in classes}
 	models = {label: PoolingGRU(__INPUT_DIM, __OUTPUT_DIM, __POOLING_SIZE, __HIDDEN_DIM) for label in classes}
-	train_with_pooling(classes, models, scene, learning_rates, __NUM_EPOCHS)
+	learning_rates = {model : __LEARNING_RATE for model in classes}
+	train_with_pooling(models, __NUM_SCENES, learning_rates, __NUM_EPOCHS)
 
 elif mode == "naive":
-	print('creating model')
+	print 'creating model'
 	model = NaiveGRU(__INPUT_DIM, __OUTPUT_DIM, __HIDDEN_DIM)
-	x_train, y_train = load_training_set()
-	print('training model')
-	train_naively(model, x_train, y_train, __LEARNING_RATE, __NUM_EPOCHS, "Biker")
+	CLASS = "Biker"
+	train_naively(model, __NUM_SCENES, __LEARNING_RATE, __NUM_EPOCHS, CLASS)
 
 else:
 	print("enter a valid mode: either 'pooling' or 'naive'")
+
+
+
 
 
