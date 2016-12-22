@@ -18,9 +18,8 @@ Each person in the scene is assigned an RNN (according to their class i.e. pedes
 
 At each time step, a pooling layer gathers neighboring trajectories. A person's neighborhood is defined as the 160 x 160 pixel area around them. This grid is split into a 20 x 20 grid. Then, I use a 20 x 20 x hidden_state_dim pooling tensor, H, where H(m,n,:) is the hidden state of the the person at grid square (m,n). If there are two or more people in the same grid, then their hidden states are pooled (it indicate couples or micro-crowds of higher density). Then, I embed this into a vector and feed it into the RNN.
 
-Here is a graphic on pooling: </br>
-![oops](https://raw.githubusercontent.com/KarKar4444/nn-trajectory-prediction/master/res/pooling.jpg =200x)
-
+Here is a graphic on pooling:
+<img src="https://raw.githubusercontent.com/KarKar4444/nn-trajectory-prediction/master/res/pooling.jpg" width="400"/>
 
 After observing the past 18 frames, the RNN can spit out the expected position at the next frame.
 
