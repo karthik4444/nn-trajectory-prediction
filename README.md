@@ -18,7 +18,7 @@ Each person in the scene is assigned an RNN (according to their class i.e. pedes
 
 At each time step, a pooling layer gathers neighboring trajectories. A person's neighborhood is defined as the 160 x 160 pixel area around them. This grid is split into a 20 x 20 grid. Then, I use a 20 x 20 x hidden_state_dim pooling tensor, H, where H(m,n,:) is the hidden state of the the person at grid square (m,n). If there are two or more people in the same grid, then their hidden states are pooled (it indicate couples or micro-crowds of higher density). Then, I embed this into a vector and feed it into the RNN.
 
-Here is a graphic on pooling:
+Here is a graphic on pooling: </br>
 ![oops](https://raw.githubusercontent.com/KarKar4444/nn-trajectory-prediction/master/res/pooling.jpg "pooling")
 
 
@@ -29,18 +29,18 @@ The code uses Theano. I implemented a GRU as opposed to an LSTM (located in pool
 
 I also added a naive implementation that doesn't look at neighboring trajectories to use as a baseline.
 
-Reading data from annotations:
-`python read_data.py`
+Reading data from annotations: </br>
+```python read_data.py```
 
-Running the training script (for naive and w/ pooling_:
-`THEANO_FLAGS=mode=FAST_RUN,device=gpu,floatX=float32 python train.py naive`
-`THEANO_FLAGS=mode=FAST_RUN,device=gpu,floatX=float32 python train.py pooling`
+Running the training script (for naive and w/ pooling_: </br>
+```THEANO_FLAGS=mode=FAST_RUN,device=gpu,floatX=float32 python train.py naive``` </br>
+```THEANO_FLAGS=mode=FAST_RUN,device=gpu,floatX=float32 python train.py pooling```
 
 *the naive script only trains on Bikers (since there is no need to look at different neighbors and theres more biker data)
 
 ## Some results
-I found this to be pretty cool. The first image is the trajectory actually taken by the biker. The second is what the GRU predicted.
-![oops](https://raw.githubusercontent.com/KarKar4444/nn-trajectory-prediction/master/res/actual.jpg "actual")
+I found this to be pretty cool. The first image is the trajectory actually taken by the biker. The second is what the GRU predicted. </br>
+![oops](https://raw.githubusercontent.com/KarKar4444/nn-trajectory-prediction/master/res/actual.jpg "actual") </br>
 ![oops](https://raw.githubusercontent.com/KarKar4444/nn-trajectory-prediction/master/res/predicted.jpg "predicted")
 
 
