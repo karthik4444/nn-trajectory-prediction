@@ -7,18 +7,16 @@ Need to determine proper hyper parameters for training
 
 Training With
 - 1 GRU Layer
-- 0 embedding layers
 - hidden layer dimension = 128
 - default: no BPTT truncation  
-- GPU optimized
-
-Input Layer >>> GRU layer #>> Output Layer
+- ready for GPU use
 
 '''
 
 class NaiveGRU:
+    #initialize network parameters
     def __init__(self, input_dim, output_dim, hidden_dim=128, bptt_truncate=-1):
-        #instance variables for LSTM
+        #instance variables for GRU
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
         self.bptt_truncate = bptt_truncate
@@ -54,6 +52,7 @@ class NaiveGRU:
         x = T.fmatrix('x')
         y = T.fvector('y')
 
+        #implementation of ReLU activator
         def ReLU(x):
             return T.switch(x<0, 0, x)
 
@@ -132,6 +131,5 @@ class NaiveGRU:
         self.loss = theano.function([x, y], loss, allow_input_downcast=True)
 
         def cost(X, Y):
-            #average loss = cost
             return (np.sum([self.loss(x,y) for x,y in zip(X,Y)])) / len(X)
         self.cost = cost

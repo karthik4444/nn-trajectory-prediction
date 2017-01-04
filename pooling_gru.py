@@ -4,7 +4,7 @@ import theano.tensor as T
 
 class PoolingGRU:
     def __init__(self, input_dim, output_dim, pooling_size, hidden_dim=128, bptt_truncate=-1):
-        #instance variables for LSTM
+        #instance variables for GRU
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
         self.bptt_truncate = bptt_truncate
@@ -57,12 +57,13 @@ class PoolingGRU:
             return T.switch(x<0, 0, x)
 
         def time_step(H_t, x_t, s_prev):
-            #Embedding Layer with ReLU non-linearity
+            #Embedding Layer. Hidden pooling tensor is flattened, and embedded into vector with ReLU non-linearity
+            #embedded hidden pooling tensor is concatenated to embedded input vector
             H_e = ReLU(D.dot(H_t.flatten(1)))
             x_e = ReLU(E.dot(x_t))
             i = T.concatenate([x_e, H_e])
 
-            # GRU Layer 1
+            # GRU Layer
             z_t = T.nnet.hard_sigmoid(U[0].dot(i) + W[0].dot(s_prev) + b[0])
             r_t = T.nnet.hard_sigmoid(U[1].dot(i) + W[1].dot(s_prev) + b[1])
             c_t = ReLU(U[2].dot(i) + W[2].dot(s_prev * r_t) + b[2])
@@ -85,6 +86,7 @@ class PoolingGRU:
             )
         self.predict = theano.function([x, H], o[-1], allow_input_downcast=True)
 
+        #loss defined by square distance between predicted and actual
         loss = T.dot(o[-1] - y, o[-1] - y)
         self.loss = theano.function([x, H, y], loss, allow_input_downcast=True)
 

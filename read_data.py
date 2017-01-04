@@ -1,13 +1,16 @@
 from utils import *
 
-#reading anf formatting data from CVGL annotations
+#reading and formatting data from dataset annotations
 
+#training on first 4 scenes and testing on last (holdout).
 NUM_SCENES = 5
 TEST_SCENE = 4
 classes = ["Pedestrian", "Biker", "Skater", "Cart"]
 
 for s in range(NUM_SCENES):
+	#load annotations
 	dataset = open('annotations/deathCircle/video' + str(s) + '/annotations.txt')
+	#dictionary to hold parsed details
 	scene = {}
 
 	while True:
@@ -22,6 +25,7 @@ for s in range(NUM_SCENES):
 		x = (int(row[1]) + int(row[3])) / 2
 		y = (int(row[2]) + int(row[4])) / 2
 		label = row[-1][1:-2]
+		#skip sparse busses and resolve cars as carts
 		if label == "Bus":
 			continue
 		if label == "Car":
@@ -33,6 +37,8 @@ for s in range(NUM_SCENES):
 		else:
 			scene[frame] = [info]
 
+	#spearate parsed info into the three dictionaries (reduces complexity while training)
+	#outlay_dict contains position per frame. class_dict contains classification per member-id. path_dict contains path thus far per member-id
 	outlay_dict, class_dict, path_dict = {}, {}, {}
 	frames = scene.keys()
 	frames = sorted(frames)
@@ -54,6 +60,7 @@ for s in range(NUM_SCENES):
 
 	save_processed_scene([outlay_dict, class_dict, path_dict], s)
 
+	#constructing a simpler dataset for naive training
 	def extract_naive_dataset(s, c):
 		frames = s.keys()
 		frames = sorted(frames)
